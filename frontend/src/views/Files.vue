@@ -482,14 +482,6 @@ function fallbackCopy(text, successMsg) {
   document.body.removeChild(textarea)
 }
 
-function copyCode(file) {
-  navigator.clipboard.writeText(file.extract_code).then(() => {
-    ElMessage.success(`提取码 ${file.extract_code} 已复制`)
-  }).catch(() => {
-    ElMessage.error('复制失败')
-  })
-}
-
 onMounted(() => {
   fetchFiles()
 })
