@@ -216,6 +216,26 @@ setup_python_env() {
 clone_repository() {
     log_step "克隆代码仓库..."
     
+    # 先停止可能正在运行的服务，释放端口
+    if systemctl is-active --quiet $PROJECT_NAME 2>/dev/null; then
+        log_info "停止正在运行的服务..."
+        systemctl stop $PROJECT_NAME 2>/dev/null || true
+        sleep 2
+    fi
+    
+    # 检查并杀死占用后端端口的进程
+    if ss -tlnp | grep -q ":${BACKEND_PORT} "; then
+        log_warn "端口 ${BACKEND_PORT} 被占用，尝试释放..."
+        fuser -k ${BACKEND_PORT}/tcp 2>/dev/null || true
+        sleep 1
+    fi
+    
+    # 检查并杀死占用外部端口的进程
+    if ss -tlnp | grep -q ":${PORT} "; then
+        log_warn "端口 ${PORT} 被占用..."
+        # 不杀Nginx，只是提示
+    fi
+    
     # 如果目录已存在，先备份（但保留venv目录如果存在）
     if [ -d "$INSTALL_DIR" ]; then
         # 检查是否有虚拟环境需要保留
@@ -511,6 +531,14 @@ EOF
     # 重载systemd并启用服务
     systemctl daemon-reload
     systemctl enable $PROJECT_NAME
+    
+    # 再次确保端口已释放
+    if ss -tlnp | grep -q ":${BACKEND_PORT} "; then
+        log_warn "端口 ${BACKEND_PORT} 仍被占用，强制释放..."
+        fuser -k ${BACKEND_PORT}/tcp 2>/dev/null || true
+        sleep 2
+    fi
+    
     systemctl start $PROJECT_NAME
     
     sleep 3

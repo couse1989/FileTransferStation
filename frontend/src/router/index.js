@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useUserStore } from '@/stores/user'
 import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
 
@@ -86,18 +85,28 @@ const router = createRouter({
   routes
 })
 
-// 路由守卫
+// 路由守卫 - 延迟导入store避免循环依赖
 router.beforeEach(async (to, from, next) => {
   NProgress.start()
   
+  // 动态导入store
+  const { useUserStore } = await import('@/stores/user')
   const userStore = useUserStore()
+  
+  // 从localStorage恢复状态
+  if (!userStore.token && localStorage.getItem('token')) {
+    userStore.$patch({
+      token: localStorage.getItem('token'),
+      refreshToken: localStorage.getItem('refresh_token') || '',
+      userInfo: JSON.parse(localStorage.getItem('userInfo') || 'null')
+    })
+  }
   
   if (to.meta.requiresAuth !== false && !userStore.isLoggedIn) {
     next('/login')
   } else if (to.path === '/login' && userStore.isLoggedIn) {
     next('/')
   } else if (to.meta.requiresAdmin && !userStore.isAdmin) {
-    // 非管理员访问管理页面
     next('/')
   } else {
     next()

@@ -1,6 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import api from '@/api'
+
+// 延迟导入api避免循环依赖
+let api = null
+function getApi() {
+  if (!api) {
+    api = require('@/api').default
+  }
+  return api
+}
 
 export const useUserStore = defineStore('user', () => {
   // 状态
@@ -16,13 +24,13 @@ export const useUserStore = defineStore('user', () => {
   // 登录
   async function login(credentials) {
     try {
-      const res = await api.post('/auth/login', credentials)
+      const apiInstance = getApi()
+      const res = await apiInstance.post('/auth/login', credentials)
       
       token.value = res.access_token
       refreshToken.value = res.refresh_token
       userInfo.value = res.user
       
-      // 持久化
       localStorage.setItem('token', res.access_token)
       localStorage.setItem('refresh_token', res.refresh_token)
       localStorage.setItem('userInfo', JSON.stringify(res.user))
@@ -47,7 +55,8 @@ export const useUserStore = defineStore('user', () => {
   // 获取用户信息
   async function fetchUserInfo() {
     try {
-      const res = await api.get('/auth/me')
+      const apiInstance = getApi()
+      const res = await apiInstance.get('/auth/me')
       userInfo.value = res
       localStorage.setItem('userInfo', JSON.stringify(res))
       return res
@@ -62,7 +71,8 @@ export const useUserStore = defineStore('user', () => {
     try {
       if (!refreshToken.value) return false
       
-      const res = await api.post('/auth/refresh', {}, {
+      const apiInstance = getApi()
+      const res = await apiInstance.post('/auth/refresh', {}, {
         headers: { Authorization: `Bearer ${refreshToken.value}` }
       })
       
@@ -77,7 +87,8 @@ export const useUserStore = defineStore('user', () => {
   
   // 修改密码
   async function changePassword(data) {
-    return await api.post('/auth/change-password', data)
+    const apiInstance = getApi()
+    return await apiInstance.post('/auth/change-password', data)
   }
   
   // 恢复会话（页面刷新时）
