@@ -36,17 +36,24 @@ def create_app(config_class=None):
         
         # 创建默认管理员账户（如果不存在）
         from models import User
-        admin = User.query.filter_by(username='admin').first()
-        if not admin:
-            admin = User(
-                username='admin',
-                is_admin=True,
-                is_active=True
-            )
-            admin.set_password('Admin@123456')  # 默认密码，首次登录请修改
-            db.session.add(admin)
-            db.session.commit()
-            print("默认管理员账户已创建: admin / Admin@123456")
+        try:
+            admin = User.query.filter_by(username='admin').first()
+            if not admin:
+                admin = User(
+                    username='admin',
+                    is_admin=True,
+                    is_active=True
+                )
+                admin.set_password('Admin@123456')  # 默认密码，首次登录请修改
+                db.session.add(admin)
+                db.session.commit()
+                print("默认管理员账户已创建: admin / Admin@123456")
+            else:
+                print("管理员账户已存在")
+        except Exception as e:
+            db.session.rollback()
+            print(f"初始化管理员账户时出错: {e}")
+            # 继续启动，不阻止应用运行
     
     # 注册蓝图
     from routes.auth import auth_bp

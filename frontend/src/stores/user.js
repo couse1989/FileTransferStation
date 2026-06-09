@@ -1,47 +1,40 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-
-// 延迟导入api避免循环依赖
-let api = null
-function getApi() {
-  if (!api) {
-    api = require('@/api').default
-  }
-  return api
-}
+import api from '@/api'
 
 export const useUserStore = defineStore('user', () => {
-  // 状态
   const token = ref(localStorage.getItem('token') || '')
   const refreshToken = ref(localStorage.getItem('refresh_token') || '')
-  const userInfo = ref(JSON.parse(localStorage.getItem('userInfo') || 'null'))
+  const userInfo = ref(null)
   
-  // 计算属性
-  const isLoggedIn = computed(() => !!token.value)
-  const isAdmin = computed(() => userInfo.value?.is_admin || false)
-  const username = computed(() => userInfo.value?.username || '')
-  
-  // 登录
-  async function login(credentials) {
-    try {
-      const apiInstance = getApi()
-      const res = await apiInstance.post('/auth/login', credentials)
-      
-      token.value = res.access_token
-      refreshToken.value = res.refresh_token
-      userInfo.value = res.user
-      
-      localStorage.setItem('token', res.access_token)
-      localStorage.setItem('refresh_token', res.refresh_token)
-      localStorage.setItem('userInfo', JSON.stringify(res.user))
-      
-      return res
-    } catch (error) {
-      throw error
+  // 初始化userInfo
+  try {
+    const stored = localStorage.getItem('userInfo')
+    if (stored && stored !== 'null' && stored !== 'undefined') {
+      userInfo.value = JSON.parse(stored)
     }
+  } catch (e) {
+    userInfo.value = null
   }
   
-  // 登出
+  const isLoggedIn = computed(() => !!token.value)
+  const isAdmin = computed(() => userInfo.value?.is_admin === true)
+  const username = computed(() => userInfo.value?.username || '')
+  
+  async function login(credentials) {
+    const res = await api.post('/auth/login', credentials)
+    
+    token.value = res.access_token
+    refreshToken.value = res.refresh_token
+    userInfo.value = res.user
+    
+    localStorage.setItem('token', res.access_token)
+    localStorage.setItem('refresh_token', res.refresh_token)
+    localStorage.setItem('userInfo', JSON.stringify(res.user))
+    
+    return res
+  }
+  
   function logout() {
     token.value = ''
     refreshToken.value = ''
@@ -52,11 +45,9 @@ export const useUserStore = defineStore('user', () => {
     localStorage.removeItem('userInfo')
   }
   
-  // 获取用户信息
   async function fetchUserInfo() {
     try {
-      const apiInstance = getApi()
-      const res = await apiInstance.get('/auth/me')
+      const res = await api.get('/auth/me')
       userInfo.value = res
       localStorage.setItem('userInfo', JSON.stringify(res))
       return res
@@ -66,13 +57,11 @@ export const useUserStore = defineStore('user', () => {
     }
   }
   
-  // 刷新Token
   async function refreshAccessToken() {
     try {
       if (!refreshToken.value) return false
       
-      const apiInstance = getApi()
-      const res = await apiInstance.post('/auth/refresh', {}, {
+      const res = await api.post('/auth/refresh', {}, {
         headers: { Authorization: `Bearer ${refreshToken.value}` }
       })
       
@@ -85,13 +74,10 @@ export const useUserStore = defineStore('user', () => {
     }
   }
   
-  // 修改密码
   async function changePassword(data) {
-    const apiInstance = getApi()
-    return await apiInstance.post('/auth/change-password', data)
+    return await api.post('/auth/change-password', data)
   }
   
-  // 恢复会话（页面刷新时）
   function restoreSession() {
     if (token.value && !userInfo.value) {
       fetchUserInfo()
