@@ -6,15 +6,14 @@
     </div>
     
     <!-- 操作栏 -->
-    <el-card style="margin-bottom: 20px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-        <div style="display: flex; gap: 12px; flex: 1;">
+    <el-card style="margin-bottom: 12px;">
+      <div class="admin-toolbar">
+        <div class="admin-search">
           <el-input
             v-model="searchQuery"
             placeholder="搜索用户名..."
             prefix-icon="Search"
             clearable
-            style="width: 300px;"
             @input="handleSearch"
           />
         </div>
@@ -362,3 +361,33 @@ onMounted(() => {
   fetchUsers()
 })
 </script>
+
+<style scoped>
+.admin-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-search {
+  flex: 1;
+  min-width: 180px;
+}
+
+.admin-search .el-input {
+  width: 280px;
+}
+
+@media (max-width: 768px) {
+  .admin-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .admin-search .el-input {
+    width: 100%;
+  }
+}
+</style>

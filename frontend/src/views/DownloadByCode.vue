@@ -5,12 +5,12 @@
       <p>输入提取码即可下载文件，无需登录</p>
     </div>
     
-    <el-card style="max-width: 600px; margin: 0 auto;">
-      <div style="text-align: center; padding: 40px 20px;">
-        <el-icon :size="80" color="#409EFF" style="margin-bottom: 24px;"><Key /></el-icon>
+    <el-card class="download-code-card">
+      <div class="download-code-inner">
+        <el-icon :size="isMobile ? 60 : 80" color="#409EFF" style="margin-bottom: 20px;"><Key /></el-icon>
         
-        <h3 style="margin-bottom: 8px; color: #303133;">输入提取码下载文件</h3>
-        <p style="color: #909399; margin-bottom: 32px; font-size: 14px;">
+        <h3 class="download-code-title">输入提取码下载文件</h3>
+        <p class="download-code-hint">
           请向文件上传者索取4位提取码
         </p>
         
@@ -39,13 +39,13 @@
         </div>
         
         <!-- 操作按钮 -->
-        <div style="display: flex; justify-content: center; gap: 16px;">
-          <el-button type="primary" size="large" @click="handleDownload" :loading="downloading">
+        <div class="download-code-actions">
+          <el-button type="primary" @click="handleDownload" :loading="downloading">
             <el-icon><Download /></el-icon>
             下载文件
           </el-button>
           
-          <el-button size="large" @click="clearCode">清空</el-button>
+          <el-button @click="clearCode">清空</el-button>
         </div>
         
         <!-- 错误提示 -->
@@ -70,7 +70,7 @@
     </el-card>
     
     <!-- 使用说明 -->
-    <el-card style="max-width: 600px; margin: 24px auto;">
+    <el-card class="download-code-card" style="margin-top: 16px;">
       <template #header>
         <span>使用说明</span>
       </template>
@@ -86,7 +86,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '@/api'
 
@@ -96,6 +96,18 @@ const focusedIndex = ref(-1)
 const downloading = ref(false)
 const errorMessage = ref('')
 const fileInfo = ref(null)
+const isMobile = ref(false)
+
+function checkMobile() {
+  isMobile.value = window.innerWidth <= 768
+}
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+})
 
 // 提取码字符数组（用于显示）
 const codeChars = computed(() => {
@@ -218,6 +230,33 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.download-code-card {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.download-code-inner {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.download-code-title {
+  margin-bottom: 8px;
+  color: #303133;
+}
+
+.download-code-hint {
+  color: #909399;
+  margin-bottom: 32px;
+  font-size: 14px;
+}
+
+.download-code-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
 .code-input {
   width: 60px;
   height: 60px;
@@ -247,5 +286,31 @@ onMounted(() => {
   position: absolute;
   opacity: 0;
   pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .download-code-inner {
+    padding: 24px 12px;
+  }
+  
+  .download-code-title {
+    font-size: 16px;
+  }
+  
+  .download-code-hint {
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+  
+  .code-input {
+    width: 48px;
+    height: 48px;
+    font-size: 24px;
+  }
+  
+  .download-code-actions {
+    flex-direction: column;
+    align-items: center;
+  }
 }
 </style>

@@ -34,22 +34,22 @@
       <div v-if="selectedFiles.length > 0" style="margin-top: 20px;">
         <el-divider content-position="left">上传设置</el-divider>
         
-        <el-form :model="uploadConfig" label-width="120px" style="max-width: 600px;">
+        <el-form :model="uploadConfig" label-width="100px" class="upload-config-form">
           <el-form-item label="访问权限">
-            <el-radio-group v-model="uploadConfig.access_type">
-              <el-radio value="public">
-                公开链接（任何人可通过链接访问）
+            <el-radio-group v-model="uploadConfig.access_type" class="access-type-group">
+              <el-radio value="public" class="access-radio">
+                公开链接
               </el-radio>
-              <el-radio value="code">
-                提取码（需提供提取码才能下载）
+              <el-radio value="code" class="access-radio">
+                提取码
               </el-radio>
-              <el-radio value="private">
-                指定用户（只有指定用户可访问）
+              <el-radio value="private" class="access-radio">
+                指定用户
               </el-radio>
             </el-radio-group>
           </el-form-item>
           
-          <el-form-item v-if="uploadConfig.access_type === 'private'" label="允许的用户">
+          <el-form-item v-if="uploadConfig.access_type === 'private'" label="允许用户">
             <el-select
               v-model="uploadConfig.allowed_users"
               multiple
@@ -71,14 +71,15 @@
               :min="1"
               :max="720"
               :step="1"
+              size="small"
             />
-            <span style="margin-left: 8px; color: #909399;">小时（最长30天）</span>
+            <span class="expiry-hint">小时（最长30天）</span>
           </el-form-item>
           
           <el-form-item>
-            <el-button type="primary" size="large" @click="startUpload" :loading="uploading">
+            <el-button type="primary" @click="startUpload" :loading="uploading">
               <el-icon><Upload /></el-icon>
-              开始上传 ({{ selectedFiles.length }}个文件)
+              开始上传 ({{ selectedFiles.length }}个)
             </el-button>
             <el-button @click="clearFiles" :disabled="uploading">清空</el-button>
           </el-form-item>
@@ -89,22 +90,24 @@
       <div v-if="selectedFiles.length > 0" style="margin-top: 20px;">
         <el-divider content-position="left">待上传文件</el-divider>
         
-        <div v-for="(file, index) in selectedFiles" :key="index" class="file-item">
-          <el-icon class="file-icon"><Document /></el-icon>
-          
-          <div class="file-info">
-            <div class="file-name">{{ file.name }}</div>
-            <div class="file-meta">
-              <span>{{ formatSize(file.size) }}</span>
-              <span>{{ getAccessTypeLabel(uploadConfig.access_type) }}</span>
+        <div v-for="(file, index) in selectedFiles" :key="index" class="upload-file-item">
+          <div class="upload-file-main">
+            <el-icon class="upload-file-icon"><Document /></el-icon>
+            
+            <div class="upload-file-info">
+              <div class="upload-file-name">{{ file.name }}</div>
+              <div class="upload-file-meta">
+                <span>{{ formatSize(file.size) }}</span>
+                <span>{{ getAccessTypeLabel(uploadConfig.access_type) }}</span>
+              </div>
+              <div class="upload-file-progress">
+                <el-progress
+                  :percentage="uploadProgress[index] || 0"
+                  :status="getProgressStatus(index)"
+                  :stroke-width="8"
+                />
+              </div>
             </div>
-          </div>
-          
-          <div style="width: 200px;">
-            <el-progress
-              :percentage="uploadProgress[index] || 0"
-              :status="getProgressStatus(index)"
-            />
           </div>
           
           <el-button
@@ -453,35 +456,115 @@ onMounted(async () => {
   color: #909399;
 }
 
-.file-item {
+/* 上传设置表单 */
+.upload-config-form {
+  max-width: 600px;
+}
+
+.access-type-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.access-radio {
+  margin-right: 0 !important;
+}
+
+.expiry-hint {
+  margin-left: 8px;
+  color: #909399;
+  font-size: 12px;
+}
+
+/* 待上传文件列表 */
+.upload-file-item {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: 10px 0;
   border-bottom: 1px solid #ebeef5;
-  
-  .file-icon {
-    font-size: 32px;
-    margin-right: 12px;
-    color: #409EFF;
+  gap: 10px;
+}
+
+.upload-file-main {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 10px;
+}
+
+.upload-file-icon {
+  font-size: 32px;
+  color: #409EFF;
+  flex-shrink: 0;
+}
+
+.upload-file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.upload-file-name {
+  font-weight: 500;
+  color: #303133;
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.upload-file-meta {
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 6px;
+}
+
+.upload-file-meta span {
+  margin-right: 12px;
+}
+
+.upload-file-progress {
+  max-width: 250px;
+}
+
+/* 移动端 */
+@media (max-width: 768px) {
+  .upload-area {
+    padding: 24px 16px;
   }
   
-  .file-info {
-    flex: 1;
-    
-    .file-name {
-      font-weight: 500;
-      color: #303133;
-      margin-bottom: 4px;
-    }
-    
-    .file-meta {
-      font-size: 12px;
-      color: #909399;
-      
-      span {
-        margin-right: 16px;
-      }
-    }
+  .upload-icon {
+    font-size: 48px;
+  }
+  
+  .upload-text {
+    font-size: 14px;
+  }
+  
+  .upload-hint {
+    font-size: 11px;
+  }
+  
+  .upload-config-form {
+    max-width: 100%;
+  }
+  
+  .access-type-group {
+    flex-direction: column;
+  }
+  
+  .upload-file-progress {
+    max-width: 100%;
+  }
+  
+  .upload-file-icon {
+    font-size: 28px;
+  }
+  
+  .upload-file-name {
+    font-size: 13px;
   }
 }
 </style>

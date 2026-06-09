@@ -168,10 +168,12 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 16px;
 }
 
 .login-box {
   width: 420px;
+  max-width: 100%;
   padding: 40px;
   background: white;
   border-radius: 8px;
@@ -190,5 +192,16 @@ onMounted(() => {
   cursor: pointer;
   border-radius: 4px;
   flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .login-box {
+    padding: 24px 20px;
+  }
+  
+  .login-title {
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
 }
 </style>

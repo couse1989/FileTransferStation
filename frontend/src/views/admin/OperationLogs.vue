@@ -6,18 +6,17 @@
     </div>
     
     <!-- 筛选栏 -->
-    <el-card style="margin-bottom: 20px;">
-      <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+    <el-card style="margin-bottom: 12px;">
+      <div class="log-filters">
         <el-input
           v-model="searchQuery"
           placeholder="搜索用户名..."
           prefix-icon="Search"
           clearable
-          style="width: 200px;"
           @input="handleSearch"
         />
         
-        <el-select v-model="operationFilter" placeholder="操作类型" clearable style="width: 180px;" @change="fetchLogs">
+        <el-select v-model="operationFilter" placeholder="操作类型" clearable @change="fetchLogs">
           <el-option label="全部" value="" />
           <el-option label="上传" value="upload" />
           <el-option label="下载" value="download" />
@@ -35,7 +34,6 @@
           end-placeholder="结束日期"
           format="YYYY-MM-DD"
           value-format="YYYY-MM-DD"
-          style="width: 260px;"
           @change="fetchLogs"
         />
       </div>
@@ -198,3 +196,42 @@ onMounted(() => {
   fetchLogs()
 })
 </script>
+
+<style scoped>
+.log-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.log-filters .el-input {
+  width: 180px;
+}
+
+.log-filters .el-select {
+  width: 160px;
+}
+
+.log-filters .el-date-editor {
+  width: 240px;
+}
+
+@media (max-width: 768px) {
+  .log-filters {
+    flex-direction: column;
+  }
+  
+  .log-filters .el-input {
+    width: 100%;
+  }
+  
+  .log-filters .el-select {
+    width: 100%;
+  }
+  
+  .log-filters .el-date-editor {
+    width: 100%;
+  }
+}
+</style>

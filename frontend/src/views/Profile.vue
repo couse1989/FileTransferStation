@@ -5,9 +5,9 @@
       <p>管理您的账户信息和密码</p>
     </div>
     
-    <el-row :gutter="20">
+    <el-row :gutter="16">
       <!-- 用户信息 -->
-      <el-col :span="12">
+      <el-col :xs="24" :md="12" style="margin-bottom: 12px;">
         <el-card>
           <template #header>
             <span>基本信息</span>
@@ -30,7 +30,7 @@
       </el-col>
       
       <!-- 修改密码 -->
-      <el-col :span="12">
+      <el-col :xs="24" :md="12" style="margin-bottom: 12px;">
         <el-card>
           <template #header>
             <span>修改密码</span>
@@ -41,7 +41,7 @@
             :model="passwordForm"
             :rules="passwordRules"
             label-width="100px"
-            style="max-width: 400px;"
+            class="password-form"
           >
             <el-form-item label="当前密码" prop="old_password">
               <el-input
@@ -61,7 +61,7 @@
               />
             </el-form-item>
             
-            <el-form-item label="确认新密码" prop="confirm_password">
+            <el-form-item label="确认密码" prop="confirm_password">
               <el-input
                 v-model="passwordForm.confirm_password"
                 type="password"
@@ -167,3 +167,19 @@ function formatDateTime(dateStr) {
   return new Date(dateStr).toLocaleString('zh-CN')
 }
 </script>
+
+<style scoped>
+.password-form {
+  max-width: 400px;
+}
+
+@media (max-width: 768px) {
+  .password-form {
+    max-width: 100%;
+  }
+  
+  :deep(.el-descriptions__label) {
+    width: 80px !important;
+  }
+}
+</style>

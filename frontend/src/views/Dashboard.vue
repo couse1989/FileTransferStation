@@ -6,10 +6,10 @@
     </div>
     
     <!-- 统计卡片 -->
-    <el-row :gutter="20" style="margin-bottom: 24px;">
-      <el-col :span="6">
+    <el-row :gutter="16" style="margin-bottom: 16px;">
+      <el-col :xs="12" :sm="12" :md="6" style="margin-bottom: 12px;">
         <el-card shadow="hover" class="stat-card">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div class="stat-card-inner">
             <div>
               <div class="stat-value">{{ stats.my_files || 0 }}</div>
               <div class="stat-label">我的文件</div>
@@ -19,9 +19,9 @@
         </el-card>
       </el-col>
       
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" style="margin-bottom: 12px;">
         <el-card shadow="hover" class="stat-card">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div class="stat-card-inner">
             <div>
               <div class="stat-value">{{ formatSize(stats.total_size || 0) }}</div>
               <div class="stat-label">已用空间</div>
@@ -31,9 +31,9 @@
         </el-card>
       </el-col>
       
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" style="margin-bottom: 12px;">
         <el-card shadow="hover" class="stat-card">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div class="stat-card-inner">
             <div>
               <div class="stat-value">{{ stats.total_downloads || 0 }}</div>
               <div class="stat-label">下载次数</div>
@@ -43,9 +43,9 @@
         </el-card>
       </el-col>
       
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" style="margin-bottom: 12px;">
         <el-card shadow="hover" class="stat-card">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div class="stat-card-inner">
             <div>
               <div class="stat-value">{{ stats.expiring_soon || 0 }}</div>
               <div class="stat-label">即将过期</div>
@@ -57,32 +57,30 @@
     </el-row>
     
     <!-- 快捷操作 -->
-    <el-row :gutter="20" style="margin-bottom: 24px;">
-      <el-col :span="12">
+    <el-row :gutter="16" style="margin-bottom: 16px;">
+      <el-col :xs="24" :md="12" style="margin-bottom: 12px;">
         <el-card>
           <template #header>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span>快捷操作</span>
-            </div>
+            <span>快捷操作</span>
           </template>
           
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-            <el-button type="primary" size="large" @click="$router.push('/upload')">
+          <div class="quick-actions">
+            <el-button type="primary" @click="$router.push('/upload')">
               <el-icon><Upload /></el-icon>
               上传文件
             </el-button>
             
-            <el-button type="success" size="large" @click="$router.push('/files')">
+            <el-button type="success" @click="$router.push('/files')">
               <el-icon><Document /></el-icon>
               管理文件
             </el-button>
             
-            <el-button type="warning" size="large" @click="$router.push('/download-code')">
+            <el-button type="warning" @click="$router.push('/download-code')">
               <el-icon><Key /></el-icon>
               提取码下载
             </el-button>
             
-            <el-button type="info" size="large" @click="$router.push('/profile')">
+            <el-button type="info" @click="$router.push('/profile')">
               <el-icon><UserFilled /></el-icon>
               个人中心
             </el-button>
@@ -91,16 +89,16 @@
       </el-col>
       
       <!-- 最近上传的文件 -->
-      <el-col :span="12">
+      <el-col :xs="24" :md="12" style="margin-bottom: 12px;">
         <el-card>
           <template #header>
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span>最近上传</span>
-              <el-button text type="primary" @click="$router.push('/files')">查看全部</el-button>
+              <el-button text type="primary" size="small" @click="$router.push('/files')">查看全部</el-button>
             </div>
           </template>
           
-          <div v-if="recentFiles.length === 0" style="text-align: center; padding: 40px; color: #909399;">
+          <div v-if="recentFiles.length === 0" style="text-align: center; padding: 30px; color: #909399;">
             暂无文件，快去上传吧~
           </div>
           
@@ -114,7 +112,7 @@
                 </div>
               </div>
               
-              <div style="color: #909399; font-size: 12px;">
+              <div style="color: #909399; font-size: 12px; flex-shrink: 0;">
                 {{ file.download_count }} 次下载
               </div>
             </div>
@@ -186,3 +184,23 @@ onMounted(() => {
   fetchStats()
 })
 </script>
+
+<style scoped>
+.stat-card-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .quick-actions {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

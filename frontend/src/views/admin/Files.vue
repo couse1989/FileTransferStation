@@ -6,26 +6,25 @@
     </div>
     
     <!-- 操作栏 -->
-    <el-card style="margin-bottom: 20px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-        <div style="display: flex; gap: 12px; flex: 1;">
+    <el-card style="margin-bottom: 12px;">
+      <div class="admin-toolbar">
+        <div class="admin-filters">
           <el-input
             v-model="searchQuery"
             placeholder="搜索文件名..."
             prefix-icon="Search"
             clearable
-            style="width: 300px;"
             @input="handleSearch"
           />
           
-          <el-select v-model="statusFilter" placeholder="状态筛选" clearable style="width: 150px;" @change="fetchFiles">
+          <el-select v-model="statusFilter" placeholder="状态筛选" clearable @change="fetchFiles">
             <el-option label="全部" value="" />
             <el-option label="有效" value="active" />
             <el-option label="已过期" value="expired" />
             <el-option label="已删除" value="deleted" />
           </el-select>
           
-          <el-select v-model="uploaderFilter" placeholder="上传者筛选" clearable filterable style="width: 180px;" @change="fetchFiles">
+          <el-select v-model="uploaderFilter" placeholder="上传者筛选" clearable filterable @change="fetchFiles">
             <el-option
               v-for="user in userList"
               :key="user.id"
@@ -250,5 +249,47 @@ onMounted(async () => {
 .text-danger {
   color: #f56c6c;
   text-decoration: line-through;
+}
+
+.admin-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-filters {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.admin-filters .el-input {
+  width: 240px;
+}
+
+.admin-filters .el-select {
+  width: 140px;
+}
+
+@media (max-width: 768px) {
+  .admin-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .admin-filters {
+    flex-direction: column;
+  }
+  
+  .admin-filters .el-input {
+    width: 100%;
+  }
+  
+  .admin-filters .el-select {
+    width: 100%;
+  }
 }
 </style>

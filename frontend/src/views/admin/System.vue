@@ -6,29 +6,29 @@
     </div>
     
     <!-- 系统统计 -->
-    <el-row :gutter="20" style="margin-bottom: 24px;">
-      <el-col :span="6">
+    <el-row :gutter="12" style="margin-bottom: 16px;">
+      <el-col :xs="12" :sm="12" :md="6" style="margin-bottom: 12px;">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-value">{{ stats.total_users || 0 }}</div>
           <div class="stat-label">用户总数</div>
         </el-card>
       </el-col>
       
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" style="margin-bottom: 12px;">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-value">{{ stats.active_files || 0 }}</div>
           <div class="stat-label">有效文件</div>
         </el-card>
       </el-col>
       
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" style="margin-bottom: 12px;">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-value">{{ formatSize(stats.total_storage_used || 0) }}</div>
           <div class="stat-label">已用存储</div>
         </el-card>
       </el-col>
       
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" style="margin-bottom: 12px;">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-value" style="color: #67C23A;">{{ stats.today_uploads || 0 }}</div>
           <div class="stat-label">今日上传</div>
@@ -37,17 +37,17 @@
     </el-row>
     
     <!-- 详细统计和操作 -->
-    <el-row :gutter="20">
-      <el-col :span="16">
+    <el-row :gutter="16">
+      <el-col :xs="24" :md="16" style="margin-bottom: 12px;">
         <el-card>
           <template #header>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="card-header-row">
               <span>详细统计</span>
-              <el-button text type="primary" @click="fetchStats">刷新</el-button>
+              <el-button text type="primary" size="small" @click="fetchStats">刷新</el-button>
             </div>
           </template>
           
-          <el-descriptions :column="3" border>
+          <el-descriptions :column="3" border class="stats-descriptions">
             <el-descriptions-item label="活跃用户">{{ stats.active_users || 0 }} 人</el-descriptions-item>
             <el-descriptions-item label="管理员数量">{{ stats.admin_users || 0 }} 人</el-descriptions-item>
             <el-descriptions-item label="过期文件">{{ stats.expired_files || 0 }} 个</el-descriptions-item>
@@ -61,17 +61,17 @@
         </el-card>
         
         <!-- 存储信息 -->
-        <el-card style="margin-top: 20px;">
+        <el-card style="margin-top: 12px;">
           <template #header>存储使用情况</template>
           
           <div v-if="stats.storage_info">
-            <p><strong>存储目录：</strong>{{ stats.storage_info.upload_folder }}</p>
-            <p><strong>目录状态：</strong>
+            <p class="storage-info-p"><strong>存储目录：</strong>{{ stats.storage_info.upload_folder }}</p>
+            <p class="storage-info-p"><strong>目录状态：</strong>
               <el-tag :type="stats.storage_info.exists ? 'success' : 'danger'" size="small">
                 {{ stats.storage_info.exists ? '正常' : '不存在' }}
               </el-tag>
             </p>
-            <p v-if="stats.storage_info.used_bytes !== undefined">
+            <p v-if="stats.storage_info.used_bytes !== undefined" class="storage-info-p">
               <strong>已用空间：</strong>{{ formatSize(stats.storage_info.used_bytes) }}
             </p>
           </div>
@@ -80,14 +80,14 @@
             v-if="storageUsagePercent > 0"
             :percentage="storageUsagePercent"
             :status="storageStatus"
-            style="margin-top: 16px;"
+            style="margin-top: 12px;"
           />
         </el-card>
       </el-col>
       
-      <el-col :span="8">
+      <el-col :xs="24" :md="8">
         <!-- 版本信息 -->
-        <el-card style="margin-bottom: 20px;">
+        <el-card style="margin-bottom: 12px;">
           <template #header>
             <span>版本与更新</span>
           </template>
@@ -116,13 +116,14 @@
             </el-descriptions-item>
           </el-descriptions>
           
-          <div style="margin-top: 16px; display: flex; gap: 12px;">
-            <el-button type="primary" @click="checkUpdate" :loading="checking">
+          <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+            <el-button type="primary" size="small" @click="checkUpdate" :loading="checking">
               检查更新
             </el-button>
             
             <el-button
               type="success"
+              size="small"
               @click="performUpdate"
               :disabled="!versionInfo.update_available"
               :loading="updating"
@@ -136,7 +137,7 @@
         <el-card>
           <template #header>快捷操作</template>
           
-          <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div class="quick-actions-col">
             <el-button icon="Delete" @click="$router.push('/admin/files')">
               文件管理
             </el-button>
@@ -331,5 +332,45 @@ onMounted(() => {
 .stat-card .stat-label {
   font-size: 14px;
   color: #909399;
+}
+
+.card-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.storage-info-p {
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.quick-actions-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .stat-card .stat-value {
+    font-size: 20px;
+  }
+  
+  .stat-card .stat-label {
+    font-size: 12px;
+  }
+  
+  .storage-info-p {
+    font-size: 13px;
+    word-break: break-all;
+  }
+  
+  .stats-descriptions :deep(.el-descriptions__body) {
+    display: block;
+  }
+  
+  .stats-descriptions :deep(.el-descriptions__table) {
+    display: block;
+  }
 }
 </style>

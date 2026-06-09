@@ -6,19 +6,18 @@
     </div>
     
     <!-- 搜索和操作栏 -->
-    <el-card style="margin-bottom: 20px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-        <div style="display: flex; gap: 12px; flex: 1; min-width: 300px;">
+    <el-card style="margin-bottom: 12px;">
+      <div class="files-toolbar">
+        <div class="files-search">
           <el-input
             v-model="searchQuery"
             placeholder="搜索文件名..."
             prefix-icon="Search"
             clearable
-            style="width: 300px;"
             @input="handleSearch"
           />
           
-          <el-select v-model="statusFilter" placeholder="状态筛选" clearable style="width: 150px;" @change="fetchFiles">
+          <el-select v-model="statusFilter" placeholder="状态筛选" clearable @change="fetchFiles">
             <el-option label="全部" value="" />
             <el-option label="有效" value="active" />
             <el-option label="已过期" value="expired" />
@@ -26,7 +25,7 @@
           </el-select>
         </div>
         
-        <div style="display: flex; gap: 8px;">
+        <div class="files-actions">
           <el-button type="primary" icon="Upload" @click="$router.push('/upload')">
             上传文件
           </el-button>
@@ -36,7 +35,7 @@
             :disabled="selectedFileIds.length === 0"
             @click="handleBatchDelete"
           >
-            批量删除 ({{ selectedFileIds.length }})
+            批量删除 <span v-if="selectedFileIds.length">({{ selectedFileIds.length }})</span>
           </el-button>
           
           <el-button
@@ -44,14 +43,14 @@
             :disabled="selectedFileIds.length === 0"
             @click="handleBatchDownload"
           >
-            批量下载 ({{ selectedFileIds.length }})
+            批量下载 <span v-if="selectedFileIds.length">({{ selectedFileIds.length }})</span>
           </el-button>
         </div>
       </div>
     </el-card>
     
-    <!-- 文件列表 -->
-    <el-card>
+    <!-- 文件列表 - 桌面端表格 -->
+    <el-card class="desktop-table">
       <el-table
         :data="files"
         stripe
@@ -61,9 +60,9 @@
       >
         <el-table-column type="selection" width="50" />
         
-        <el-table-column prop="original_name" label="文件名" min-width="250">
+        <el-table-column prop="original_name" label="文件名" min-width="200">
           <template #default="{ row }">
-            <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="file-name-cell">
               <el-icon :size="24" color="#409EFF"><Document /></el-icon>
               <span :class="{ 'file-expired': row.is_expired || row.status === 'deleted' }">
                 {{ row.original_name }}
@@ -75,7 +74,7 @@
         
         <el-table-column prop="file_size_display" label="大小" width="100" sortable />
         
-        <el-table-column label="访问类型" width="120">
+        <el-table-column label="访问类型" width="100">
           <template #default="{ row }">
             <el-tag :type="getAccessTypeTagType(row.access_type)" size="small">
               {{ getAccessTypeLabel(row.access_type) }}
@@ -83,7 +82,7 @@
           </template>
         </el-table-column>
         
-        <el-table-column label="提取码" width="90">
+        <el-table-column label="提取码" width="80">
           <template #default="{ row }">
             <span v-if="row.extract_code" style="font-weight: bold; color: #67C23A;">
               {{ row.extract_code }}
@@ -92,15 +91,15 @@
           </template>
         </el-table-column>
         
-        <el-table-column prop="download_count" label="下载次数" width="90" sortable />
+        <el-table-column prop="download_count" label="下载" width="70" sortable />
         
-        <el-table-column label="上传时间" width="170">
+        <el-table-column label="上传时间" width="160">
           <template #default="{ row }">
             {{ formatDate(row.uploaded_at) }}
           </template>
         </el-table-column>
         
-        <el-table-column label="过期时间" width="170">
+        <el-table-column label="过期时间" width="160">
           <template #default="{ row }">
             <span :class="{ 'text-danger': row.is_expired }">
               {{ formatDate(row.expires_at) }}
@@ -146,10 +145,8 @@
       </el-table>
       
       <!-- 分页 -->
-      <div style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center;">
-        <span style="color: #909399; font-size: 14px;">
-          共 {{ total }} 个文件
-        </span>
+      <div class="files-pagination">
+        <span class="files-total">共 {{ total }} 个文件</span>
         
         <el-pagination
           v-model:current-page="currentPage"
@@ -159,9 +156,72 @@
           layout="sizes, prev, pager, next, jumper"
           @size-change="fetchFiles"
           @current-change="fetchFiles"
+          small
         />
       </div>
     </el-card>
+    
+    <!-- 文件列表 - 移动端卡片 -->
+    <div class="mobile-cards">
+      <div v-if="loading" style="text-align: center; padding: 40px;">
+        <el-icon class="is-loading" :size="32"><Loading /></el-icon>
+        <p style="color: #909399; margin-top: 8px;">加载中...</p>
+      </div>
+      
+      <div v-else-if="files.length === 0" style="text-align: center; padding: 40px; color: #909399;">
+        暂无文件
+      </div>
+      
+      <div v-else>
+        <div v-for="file in files" :key="file.id" class="file-card-mobile">
+          <div class="file-card-header">
+            <div class="file-card-name">
+              <el-icon :size="22" color="#409EFF"><Document /></el-icon>
+              <span :class="{ 'file-expired': file.is_expired || file.status === 'deleted' }">
+                {{ file.original_name }}
+              </span>
+            </div>
+            <el-tag v-if="file.is_expired" type="danger" size="small">已过期</el-tag>
+            <el-tag v-else-if="file.status === 'deleted'" type="info" size="small">已删除</el-tag>
+          </div>
+          
+          <div class="file-card-meta">
+            <span>{{ file.file_size_display }}</span>
+            <span>{{ getAccessTypeLabel(file.access_type) }}</span>
+            <span v-if="file.extract_code" style="color: #67C23A;">提取码: {{ file.extract_code }}</span>
+            <span>{{ file.download_count }}次下载</span>
+          </div>
+          
+          <div class="file-card-time">
+            <span>上传: {{ formatDate(file.uploaded_at) }}</span>
+            <span>过期: {{ formatDate(file.expires_at) }}</span>
+          </div>
+          
+          <div class="file-card-actions">
+            <el-button size="small" @click="downloadFile(file)">下载</el-button>
+            <el-button size="small" @click="previewFile(file)" :disabled="!canPreview(file)">预览</el-button>
+            <el-button size="small" type="warning" @click="renewFile(file)" :disabled="file.status === 'deleted'">续期</el-button>
+            <el-button size="small" type="danger" @click="deleteFile(file)">删除</el-button>
+            <el-button size="small" @click="copyLink(file)">复制链接</el-button>
+          </div>
+        </div>
+        
+        <div class="files-pagination">
+          <span class="files-total">共 {{ total }} 个文件</span>
+          
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :total="total"
+            :page-sizes="[10, 20, 50]"
+            layout="prev, pager, next"
+            @size-change="fetchFiles"
+            @current-change="fetchFiles"
+            small
+          />
+        </div>
+      </div>
+    </div>
     
     <!-- 续期对话框 -->
     <el-dialog v-model="renewDialogVisible" title="延长文件保留时间" width="400px">
@@ -499,5 +559,161 @@ onMounted(() => {
 
 .text-danger {
   color: #f56c6c;
+}
+
+/* 工具栏 */
+.files-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.files-search {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.files-search .el-input {
+  width: 260px;
+}
+
+.files-search .el-select {
+  width: 130px;
+}
+
+.files-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* 文件名单元格 */
+.file-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 分页 */
+.files-pagination {
+  margin-top: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.files-total {
+  color: #909399;
+  font-size: 13px;
+}
+
+/* 移动端卡片视图 */
+.mobile-cards {
+  display: none;
+}
+
+.file-card-mobile {
+  background: white;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.file-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.file-card-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.file-card-name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 6px;
+}
+
+.file-card-time {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 11px;
+  color: #c0c4cc;
+  margin-bottom: 10px;
+}
+
+.file-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .desktop-table {
+    display: none;
+  }
+  
+  .mobile-cards {
+    display: block;
+  }
+  
+  .files-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .files-search {
+    flex-direction: column;
+  }
+  
+  .files-search .el-input {
+    width: 100%;
+  }
+  
+  .files-search .el-select {
+    width: 100%;
+  }
+  
+  .files-actions {
+    justify-content: flex-start;
+  }
+  
+  .files-pagination {
+    justify-content: center;
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-cards {
+    display: none !important;
+  }
 }
 </style>
