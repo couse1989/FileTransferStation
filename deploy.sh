@@ -20,6 +20,7 @@ GITHUB_REPO="https://github.com/couse1989/FileTransferStation.git"
 GITHUB_BRANCH="main"
 PYTHON_VERSION="3.10"
 PORT=3000
+BACKEND_PORT=5000  # Gunicorn内部监听端口（Nginx代理到外部PORT）
 
 # GitHub Token（用于私有仓库或自动更新）
 # 请设置环境变量: export GITHUB_TOKEN="your_token_here"
@@ -305,27 +306,67 @@ install_python_dependencies() {
     if [ ! -d "$VENV_DIR" ]; then
         log_info "创建Python虚拟环境..."
         $PYTHON_CMD -m venv "$VENV_DIR"
+        
+        if [ $? -ne 0 ]; then
+            log_error "虚拟环境创建失败"
+            exit 1
+        fi
     else
         log_info "使用现有虚拟环境"
+    fi
+    
+    # 验证虚拟环境是否存在
+    if [ ! -f "$VENV_DIR/bin/activate" ]; then
+        log_error "虚拟环境不完整，请检查安装"
+        exit 1
     fi
     
     # 使用虚拟环境中的pip
     source "$VENV_DIR/bin/activate"
     
+    # 显示使用的Python和pip路径
+    log_info "Python路径: $(which python)"
+    log_info "Pip路径: $(which pip)"
+    
     # 升级pip
     pip install --upgrade pip setuptools wheel
     
-    # 从requirements.txt安装依赖
+    # 从requirements.txt安装依赖（在后端目录中）
     if [ -f requirements.txt ]; then
+        log_info "从 requirements.txt 安装依赖..."
         pip install -r requirements.txt
+        
+        if [ $? -ne 0 ]; then
+            log_error "依赖安装失败，请查看上方错误信息"
+            exit 1
+        fi
     else
-        log_warn "未找到 requirements.txt，跳过依赖安装"
+        log_warn "未找到 requirements.txt，尝试手动安装核心依赖..."
+        pip install Flask Flask-SQLAlchemy flask-cors flask-jwt-extended bcrypt Pillow PyJWT gunicorn gevent requests
     fi
     
-    # 安装生产服务器依赖
-    pip install gunicorn gevent
+    # 验证关键依赖是否安装成功
+    log_info "验证关键依赖..."
+    python -c "
+try:
+    import flask
+    import flask_sqlalchemy
+    import flask_cors
+    import flask_jwt_extended
+    import bcrypt
+    from PIL import Image
+    print('所有关键依赖验证通过!')
+except ImportError as e:
+    print(f'ERROR: 缺少依赖: {e}')
+    exit(1)
+"
     
-    log_info "Python依赖安装完成"
+    if [ $? -ne 0 ]; then
+        log_error "依赖验证失败！某些包未正确安装"
+        exit 1
+    fi
+    
+    log_info "Python依赖安装完成（已验证）"
 }
 
 # 构建前端
@@ -394,9 +435,9 @@ server {
         }
     }
 
-    # API代理到后端
+    # API代理到后端（Gunicorn监听在内部端口）
     location /api/ {
-        proxy_pass http://127.0.0.1:${PORT};
+        proxy_pass http://127.0.0.1:${BACKEND_PORT};
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -410,7 +451,7 @@ server {
 
     # 文件下载（直接代理）
     location /download/ {
-        proxy_pass http://127.0.0.1:${PORT};
+        proxy_pass http://127.0.0.1:${BACKEND_PORT};
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         
@@ -449,10 +490,10 @@ Type=simple
 User=root
 WorkingDirectory=${INSTALL_DIR}/backend
 Environment=PATH=${INSTALL_DIR}/venv/bin
-ExecStart=${INSTALL_DIR}/venv/bin/gunicorn wsgi:app \\
-    --workers 4 \\
+    ExecStart=${INSTALL_DIR}/venv/bin/gunicorn wsgi:app \\
+    --workers 2 \\
     --worker-class gevent \\
-    --bind 127.0.0.1:${PORT} \\
+    --bind 127.0.0.1:${BACKEND_PORT} \\
     --timeout 120 \\
     --keep-alive 5 \\
     --max-requests 1000 \\
