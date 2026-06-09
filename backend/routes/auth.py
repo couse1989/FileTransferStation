@@ -268,3 +268,13 @@ def change_password():
     db.session.commit()
     
     return jsonify({'message': '密码修改成功'}), 200
+
+
+@auth_bp.route('/users', methods=['GET'])
+@jwt_required()
+def list_active_users():
+    """获取活跃用户列表（所有登录用户可用，用于文件分享时选择指定用户）"""
+    users = User.query.filter_by(is_active=True).order_by(User.username).all()
+    return jsonify({
+        'users': [{'id': u.id, 'username': u.username} for u in users]
+    }), 200

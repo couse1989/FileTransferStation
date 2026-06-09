@@ -408,7 +408,7 @@ function fallbackCopy(text, successMsg) {
 // 获取用户列表（用于指定用户模式）
 onMounted(async () => {
   try {
-    const res = await api.get('/admin/users')
+    const res = await api.get('/auth/users')
     userList.value = res.users || []
   } catch (error) {
     console.error('获取用户列表失败:', error)
