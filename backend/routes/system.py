@@ -152,7 +152,7 @@ def perform_update():
         os.makedirs(backup_dir, exist_ok=True)
         
         import shutil
-        db_file = os.path.join(project_dir, 'filetransfer.db')
+        db_file = os.path.join(project_dir, 'backend', 'filetransfer.db')
         if os.path.exists(db_file):
             backup_name = f"filetransfer.db.bak_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
             shutil.copy2(db_file, os.path.join(backup_dir, backup_name))
@@ -172,19 +172,54 @@ def perform_update():
                 'details': result.stderr
             }), 500
         
-        # 3. 安装新的依赖（如果有变化）
+        git_output = result.stdout[:500] if result.stdout else 'Already up to date'
+        
+        # 3. 安装Python依赖
+        venv_pip = os.path.join(project_dir, 'venv', 'bin', 'pip')
         requirements_file = os.path.join(project_dir, 'requirements.txt')
-        if os.path.exists(requirements_file):
+        if os.path.exists(requirements_file) and os.path.exists(venv_pip):
             pip_result = subprocess.run(
-                ['pip', 'install', '-r', requirements_file],
+                [venv_pip, 'install', '-r', requirements_file],
                 capture_output=True,
                 text=True,
                 timeout=300
             )
-            # 依赖安装失败不阻止更新，只记录警告
         
-        # 4. 重启服务（通过systemctl）
-        restart_result = subprocess.run(
+        # 4. 构建前端（如果frontend目录有变化）
+        frontend_dir = os.path.join(project_dir, 'frontend')
+        if os.path.exists(frontend_dir):
+            npm_path = '/usr/bin/npm'
+            if not os.path.exists(npm_path):
+                npm_path = '/usr/local/bin/npm'
+            
+            if os.path.exists(npm_path):
+                # 安装前端依赖并构建
+                subprocess.run(
+                    [npm_path, 'install'],
+                    cwd=frontend_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=300
+                )
+                
+                build_result = subprocess.run(
+                    [npm_path, 'run', 'build'],
+                    cwd=frontend_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=300
+                )
+                
+                # 复制构建产物到后端静态目录
+                dist_dir = os.path.join(frontend_dir, 'dist')
+                static_dir = os.path.join(project_dir, 'backend', 'static')
+                if os.path.exists(dist_dir):
+                    if os.path.exists(static_dir):
+                        shutil.rmtree(static_dir)
+                    shutil.copytree(dist_dir, static_dir)
+        
+        # 5. 重启服务
+        subprocess.run(
             ['sudo', 'systemctl', 'restart', 'filetransfer'],
             capture_output=True,
             text=True,
@@ -202,7 +237,7 @@ def perform_update():
             details=json.dumps({
                 'old_version': current,
                 'new_version': new_version,
-                'git_output': result.stdout[:500]
+                'git_output': git_output
             }),
             ip_address=request.remote_addr
         )
@@ -210,10 +245,10 @@ def perform_update():
         db.session.commit()
         
         return jsonify({
-            'message': '系统更新成功，正在重启...',
+            'message': '系统更新成功，服务正在重启...',
             'old_version': current,
             'new_version': new_version,
-            'git_output': result.stdout[:200] if result.stdout else '无输出'
+            'git_output': git_output
         }), 200
         
     except subprocess.TimeoutExpired:
