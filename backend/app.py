@@ -54,6 +54,20 @@ def create_app(config_class=None):
             db.session.rollback()
             print(f"初始化管理员账户时出错: {e}")
             # 继续启动，不阻止应用运行
+        
+        # 清理过期的验证码
+        try:
+            from datetime import datetime
+            from models import SystemConfig
+            cutoff = datetime.utcnow().isoformat()
+            SystemConfig.query.filter(
+                SystemConfig.key.like('captcha_%'),
+                SystemConfig.description < cutoff
+            ).delete(synchronize_session=False)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"清理验证码时出错: {e}")
     
     # 注册蓝图
     from routes.auth import auth_bp

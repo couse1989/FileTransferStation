@@ -7,18 +7,65 @@ from flask_jwt_extended import create_access_token, create_refresh_token, jwt_re
 from datetime import datetime, timedelta
 import random
 import string
-from models import db, User, LoginLog, OperationLog
+import hashlib
+from models import db, User, LoginLog, OperationLog, SystemConfig
 from utils.rate_limiter import is_account_locked, record_failed_attempt, clear_failed_attempts
 
 auth_bp = Blueprint('auth', __name__)
-
-# 存储验证码（生产环境应使用Redis）
-captcha_store = {}
 
 def generate_captcha_text(length=4):
     """生成验证码文本"""
     chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
     return ''.join(random.choices(chars, k=length))
+
+
+def save_captcha(key, text):
+    """保存验证码到数据库（5分钟有效）"""
+    expires = (datetime.utcnow() + timedelta(minutes=5)).isoformat()
+    config = SystemConfig.query.get(f'captcha_{key}')
+    if config:
+        config.value = text
+        config.description = expires
+    else:
+        config = SystemConfig(key=f'captcha_{key}', value=text, description=expires)
+        db.session.add(config)
+    db.session.commit()
+
+
+def verify_captcha(key, text):
+    """验证验证码并删除"""
+    config = SystemConfig.query.get(f'captcha_{key}')
+    if not config:
+        return False
+    try:
+        expires = datetime.fromisoformat(config.description)
+        if datetime.utcnow() > expires:
+            db.session.delete(config)
+            db.session.commit()
+            return False
+    except:
+        db.session.delete(config)
+        db.session.commit()
+        return False
+    
+    if config.value.upper() == text.upper():
+        db.session.delete(config)
+        db.session.commit()
+        return True
+    return False
+
+
+def cleanup_expired_captchas():
+    """清理过期的验证码"""
+    try:
+        cutoff = datetime.utcnow().isoformat()
+        SystemConfig.query.filter(
+            SystemConfig.key.like('captcha_%'),
+            SystemConfig.description < cutoff
+        ).delete(synchronize_session=False)
+        db.session.commit()
+    except:
+        pass
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
@@ -73,17 +120,14 @@ def login():
     if is_account_locked(ip_address):
         # 验证验证码
         captcha = data.get('captcha')
-        captcha_key = f"{ip_address}_{data.get('captcha_key', '')}"
+        captcha_key = data.get('captcha_key', '')
         
-        if not captcha or captcha_store.get(captcha_key) != captcha.upper():
+        if not captcha or not captcha_key or not verify_captcha(captcha_key, captcha):
             return jsonify({
                 'error': '验证码错误或已过期',
                 'require_captcha': True,
                 'need_new_captcha': True
             }), 403
-        else:
-            # 验证码正确，清除该次记录
-            del captcha_store[captcha_key]
     
     # 验证密码
     if user.check_password(password):
@@ -159,13 +203,10 @@ def get_captcha():
     text = generate_captcha_text(4)
     key = f"{ip_address}_{random.randint(1000, 9999)}"
     
-    # 存储验证码（5分钟有效期）
-    captcha_store[key] = text.upper()
-    # 清理过期的验证码（简单实现）
-    if len(captcha_store) > 1000:
-        keys_to_remove = list(captcha_store.keys())[:-500]
-        for k in keys_to_remove:
-            del captcha_store[k]
+    # 存储验证码到数据库（5分钟有效期）
+    save_captcha(key, text)
+    # 清理过期验证码
+    cleanup_expired_captchas()
     
     # 生成验证码图片
     width, height = 120, 50
