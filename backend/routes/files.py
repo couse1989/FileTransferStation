@@ -496,6 +496,56 @@ def download_file(file_id):
     )
 
 
+@files_bp.route('/download/public/<int:file_id>', methods=['GET'])
+def download_public(file_id):
+    """公开下载文件（无需登录，仅限access_type=public的文件）"""
+    file_record = db.session.get(File, file_id)
+    
+    if not file_record:
+        return jsonify({'error': '文件不存在'}), 404
+    
+    # 只有公开文件才能通过此接口下载
+    if file_record.access_type != 'public':
+        return jsonify({'error': '此文件需要登录才能下载'}), 403
+    
+    # 检查状态
+    if file_record.status in ('expired', 'deleted'):
+        return jsonify({'error': '文件已过期或已删除'}), 410
+    
+    # 检查过期时间
+    if file_record.expires_at and file_record.expires_at < datetime.utcnow():
+        file_record.status = 'expired'
+        db.session.commit()
+        return jsonify({'error': '文件已过期'}), 410
+    
+    # 检查文件是否存在
+    if not file_record.storage_path or not os.path.exists(file_record.storage_path):
+        return jsonify({'error': '文件不存在'}), 404
+    
+    # 增加下载计数
+    file_record.download_count += 1
+    db.session.commit()
+    
+    # 记录日志
+    log = OperationLog(
+        user_id=None,
+        username='anonymous',
+        operation_type='download_public',
+        target_type='file',
+        target_id=file_record.id,
+        details=json_module.dumps({'filename': file_record.original_name}),
+        ip_address=request.remote_addr
+    )
+    db.session.add(log)
+    db.session.commit()
+    
+    return send_file(
+        file_record.storage_path,
+        as_attachment=True,
+        download_name=file_record.original_name
+    )
+
+
 @files_bp.route('/download/code/<extract_code>', methods=['GET'])
 def download_by_code(extract_code):
     """通过提取码下载文件（无需登录）"""

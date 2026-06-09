@@ -364,7 +364,10 @@ async function uploadChunkedFile(file, index) {
 
 // 复制链接
 function copyLink(file) {
-  const url = `${window.location.origin}/api/files/download/${file.id}`
+  const path = file.access_type === 'public'
+    ? `/api/files/download/public/${file.id}`
+    : `/api/files/download/${file.id}`
+  const url = `${window.location.origin}${path}`
   copyToClipboard(url, '链接已复制到剪贴板')
 }
 

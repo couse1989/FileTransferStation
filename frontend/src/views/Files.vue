@@ -445,7 +445,11 @@ function handleCommand(command, file) {
 }
 
 function copyLink(file) {
-  const url = `${window.location.origin}/api/files/download/${file.id}`
+  // 公开文件使用公开下载链接，私有文件使用认证下载链接
+  const path = file.access_type === 'public' 
+    ? `/api/files/download/public/${file.id}`
+    : `/api/files/download/${file.id}`
+  const url = `${window.location.origin}${path}`
   copyToClipboard(url, '链接已复制到剪贴板')
 }
 
