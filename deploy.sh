@@ -206,34 +206,44 @@ setup_python_env() {
     
     # 获取Python版本
     PY_VER=$($PYTHON_CMD --version | awk '{print $2}')
-    log_info "Python版本: ${PY_VER}"
+    log_info "检测到 Python 版本: ${PY_VER}"
     
-    # 创建虚拟环境（如果不存在）
-    VENV_DIR="${INSTALL_DIR}/venv"
-    if [ ! -d "$VENV_DIR" ]; then
-        log_info "创建Python虚拟环境..."
-        $PYTHON_CMD -m venv $VENV_DIR
-    fi
-    
-    # 激活虚拟环境并升级pip
-    source $VENV_DIR/bin/activate
-    pip install --upgrade pip setuptools wheel
-    
-    log_info "Python环境准备完成"
+    log_info "Python环境将在克隆代码后配置"
 }
 
 # 克隆代码仓库
 clone_repository() {
     log_step "克隆代码仓库..."
     
-    # 如果目录已存在，先备份再删除
+    # 如果目录已存在，先备份（但保留venv目录如果存在）
     if [ -d "$INSTALL_DIR" ]; then
+        # 检查是否有虚拟环境需要保留
+        if [ -d "${INSTALL_DIR}/venv" ]; then
+            log_info "保留现有虚拟环境..."
+            VENV_BACKUP="/tmp/filetransfer_venv_backup_$(date +%s)"
+            cp -r "${INSTALL_DIR}/venv" "$VENV_BACKUP"
+        fi
+        
         BACKUP_DIR="${INSTALL_DIR}_backup_$(date +%Y%m%d_%H%M%S)"
         log_warn "目标目录已存在，备份到: ${BACKUP_DIR}"
+        rm -rf "$BACKUP_DIR" 2>/dev/null || true
         mv "$INSTALL_DIR" "$BACKUP_DIR"
+        
+        # 恢复虚拟环境
+        if [ -d "$VENV_BACKUP" ]; then
+            mkdir -p "$INSTALL_DIR"
+            mv "$VENV_BACKUP" "${INSTALL_DIR}/venv"
+            log_info "虚拟环境已保留"
+        fi
     fi
     
-    mkdir -p "$INSTALL_DIR"
+    # 如果目录不存在（首次安装或没有旧venv），创建它
+    if [ ! -d "$INSTALL_DIR" ]; then
+        mkdir -p "$INSTALL_DIR"
+    fi
+    
+    # 克隆仓库到临时目录（避免覆盖已有的venv）
+    TEMP_DIR="/tmp/filetransfer_clone_$(date +%s)"
     
     # 克隆仓库（如果设置了Token则使用认证）
     if [ -n "$GITHUB_TOKEN" ]; then
@@ -242,12 +252,36 @@ clone_repository() {
         GIT_URL="$GITHUB_REPO"
     fi
     
-    git clone --branch "$GITHUB_BRANCH" "$GIT_URL" "$INSTALL_DIR"
+    git clone --branch "$GITHUB_BRANCH" "$GIT_URL" "$TEMP_DIR"
     
     if [ $? -ne 0 ]; then
         log_error "Git克隆失败，请检查网络连接和仓库地址"
+        rm -rf "$TEMP_DIR"
         exit 1
     fi
+    
+    # 将克隆的文件移动到安装目录（保留现有的venv）
+    cd "$TEMP_DIR"
+    
+    # 复制所有文件除了venv目录
+    for item in * .*; do
+        # 跳过 . 和 ..
+        [[ "$item" == "." || "$item" == ".." ]] && continue
+        # 跳过venv目录（我们可能已经有一个）
+        [[ "$item" == "venv" ]] && continue
+        
+        # 如果目标是目录，先删除再复制
+        if [ -e "${INSTALL_DIR}/${item}" ] || [ -L "${INSTALL_DIR}/${item}" ]; then
+            rm -rf "${INSTALL_DIR}/${item}"
+        fi
+        
+        if [ -e "$item" ] || [ -L "$item" ]; then
+            mv "$item" "${INSTALL_DIR}/"
+        fi
+    done
+    
+    # 清理临时目录
+    rm -rf "$TEMP_DIR"
     
     cd $INSTALL_DIR
     log_info "代码克隆完成"
@@ -264,8 +298,22 @@ install_python_dependencies() {
     
     cd $INSTALL_DIR
     
+    # 设置虚拟环境目录
+    VENV_DIR="${INSTALL_DIR}/venv"
+    
+    # 创建虚拟环境（如果不存在）
+    if [ ! -d "$VENV_DIR" ]; then
+        log_info "创建Python虚拟环境..."
+        $PYTHON_CMD -m venv "$VENV_DIR"
+    else
+        log_info "使用现有虚拟环境"
+    fi
+    
     # 使用虚拟环境中的pip
-    source $VENV_DIR/bin/activate
+    source "$VENV_DIR/bin/activate"
+    
+    # 升级pip
+    pip install --upgrade pip setuptools wheel
     
     # 从requirements.txt安装依赖
     if [ -f requirements.txt ]; then
@@ -275,7 +323,7 @@ install_python_dependencies() {
     fi
     
     # 安装生产服务器依赖
-    pip install gunicorn eventlet
+    pip install gunicorn gevent
     
     log_info "Python依赖安装完成"
 }
@@ -509,23 +557,27 @@ EOF
 }
 
 # 初始化数据库
+# 初始化数据库
 initialize_database() {
     log_step "初始化数据库..."
-    
+
     cd $INSTALL_DIR/backend
-    
-    source $INSTALL_DIR/venv/bin/activate
-    
+
+    # 使用虚拟环境中的Python
+    source "$INSTALL_DIR/venv/bin/activate"
+
     # 执行数据库初始化
-    $INSTALL_DIR/venv/bin/python -c "
+    python -c "
 from app import create_app
 app = create_app()
 app.app_context().push()
 from models import db
 db.create_all()
-print('数据库表创建完成')
-"
-    
+print('Database initialized successfully')
+" || {
+        log_warn "数据库初始化失败，将在首次启动时自动创建"
+    }
+
     log_info "数据库初始化完成"
 }
 
@@ -573,9 +625,9 @@ main() {
     detect_os
     check_requirements
     install_base_dependencies
-    setup_python_env
-    clone_repository
-    install_python_dependencies
+    setup_python_env        # 只检测Python，不创建venv
+    clone_repository         # 克隆代码（保留现有venv）
+    install_python_dependencies  # 创建venv（如需要）并安装依赖
     build_frontend
     create_directories
     initialize_database
