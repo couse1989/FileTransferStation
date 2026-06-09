@@ -5,11 +5,16 @@ Flask应用工厂模式
 from flask import Flask
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from werkzeug.middleware.proxy_fix import ProxyFix
 import os
 
 def create_app(config_class=None):
     """创建Flask应用实例"""
     app = Flask(__name__)
+    
+    # 处理反向代理（Nginx）传递的真实IP
+    # x_for=1: X-Forwarded-For, x_proto=1: X-Forwarded-Proto
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
     
     # 加载配置
     if config_class:
