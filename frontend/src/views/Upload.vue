@@ -401,7 +401,6 @@ function fallbackCopy(text, successMsg) {
   }
   document.body.removeChild(textarea)
 }
-}
 
 // 获取用户列表（用于指定用户模式）
 onMounted(async () => {
