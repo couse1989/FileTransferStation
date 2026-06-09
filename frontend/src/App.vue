@@ -6,12 +6,11 @@
 
 <script setup>
 import { onMounted } from 'vue'
-import { useUserStore } from '@/stores/user'
 
-const userStore = useUserStore()
-
-onMounted(() => {
-  // 应用启动时尝试恢复登录状态
+onMounted(async () => {
+  // 延迟导入store，避免初始化顺序问题
+  const { useUserStore } = await import('@/stores/user')
+  const userStore = useUserStore()
   userStore.restoreSession()
 })
 </script>
