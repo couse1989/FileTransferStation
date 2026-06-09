@@ -2,10 +2,10 @@
 文件管理路由
 上传、下载、删除、续期、预览等
 """
-from flask import Blueprint, request, jsonify, send_file, send_from_directory, abort
+from flask import Blueprint, request, jsonify, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import os
-import json
+import json as json_module
 import hashlib
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
@@ -86,9 +86,9 @@ def upload_file():
         allowed_user_ids = None
         if access_type == 'private' and allowed_users:
             try:
-                allowed_user_ids = json.loads(allowed_users)
+                allowed_user_ids = json_module.loads(allowed_users)
                 if isinstance(allowed_user_ids, list):
-                    allowed_user_ids = json.dumps([int(uid) for uid in allowed_user_ids])
+                    allowed_user_ids = json_module.dumps([int(uid) for uid in allowed_user_ids])
             except:
                 pass
         
@@ -122,7 +122,7 @@ def upload_file():
             operation_type='upload',
             target_type='file',
             target_id=new_file.id,
-            details=json.dumps({
+            details=json_module.dumps({
                 'filename': original_name,
                 'size': file_size,
                 'access_type': access_type
@@ -188,7 +188,7 @@ def init_chunked_upload():
     allowed_user_ids = None
     if access_type == 'private' and allowed_users:
         try:
-            allowed_user_ids = json.dumps([int(uid) for uid in allowed_users])
+            allowed_user_ids = json_module.dumps([int(uid) for uid in allowed_users])
         except:
             pass
     
@@ -354,7 +354,7 @@ def complete_upload():
         operation_type='upload',
         target_type='file',
         target_id=file_id,
-        details=json.dumps({
+        details=json_module.dumps({
             'filename': file_record.original_name,
             'size': file_record.file_size,
             'access_type': file_record.access_type,
@@ -460,7 +460,7 @@ def download_file(file_id):
     elif file_record.access_type == 'private':
         # 指定用户模式
         if file_record.allowed_users:
-            allowed = json.loads(file_record.allowed_users)
+            allowed = json_module.loads(file_record.allowed_users)
             if current_user_id in allowed:
                 has_access = True
         # 上传者始终可以下载
@@ -482,7 +482,7 @@ def download_file(file_id):
         operation_type='download',
         target_type='file',
         target_id=file_id,
-        details=json.dumps({'filename': file_record.original_name}),
+        details=json_module.dumps({'filename': file_record.original_name}),
         ip_address=request.remote_addr
     )
     db.session.add(log)
@@ -525,7 +525,7 @@ def download_by_code(extract_code):
         operation_type='download_by_code',
         target_type='file',
         target_id=file_record.id,
-        details=json.dumps({
+        details=json_module.dumps({
             'filename': file_record.original_name,
             'extract_code': extract_code
         }),
@@ -619,7 +619,7 @@ def renew_file(file_id):
         operation_type='renew',
         target_type='file',
         target_id=file_id,
-        details=json.dumps({
+        details=json_module.dumps({
             'filename': file_record.original_name,
             'additional_hours': additional_hours
         }),
@@ -666,7 +666,7 @@ def delete_file(file_id):
         operation_type='delete',
         target_type='file',
         target_id=file_id,
-        details=json.dumps({'filename': file_record.original_name}),
+        details=json_module.dumps({'filename': file_record.original_name}),
         ip_address=request.remote_addr
     )
     db.session.add(log)
@@ -732,7 +732,7 @@ def batch_download():
             username=user.username,
             operation_type='batch_download',
             target_type='file',
-            details=json.dumps({'file_count': len(file_ids)}),
+            details=json_module.dumps({'file_count': len(file_ids)}),
             ip_address=request.remote_addr
         )
         db.session.add(log)

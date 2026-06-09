@@ -2,12 +2,12 @@
 认证相关路由
 登录、登出、Token刷新、验证码
 """
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
 import random
 import string
-from models import db, User, LoginLog
+from models import db, User, LoginLog, OperationLog
 from utils.rate_limiter import is_account_locked, record_failed_attempt, clear_failed_attempts
 
 auth_bp = Blueprint('auth', __name__)
@@ -255,7 +255,6 @@ def change_password():
     user.set_password(new_password)
     
     # 记录操作日志
-    from models import OperationLog
     log = OperationLog(
         user_id=current_user_id,
         username=user.username,

@@ -6,18 +6,19 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
 import os
+import json as json_module
 from models import db, User, File, LoginLog, OperationLog
 
 admin_bp = Blueprint('admin', __name__)
 
-def admin_required():
-    """检查管理员权限的装饰器函数"""
+def check_admin():
+    """检查管理员权限，返回 (is_admin, error_response)"""
     current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
+    user = db.session.get(User, current_user_id)
     
     if not user or not user.is_admin:
-        return False
-    return True
+        return False, jsonify({'error': '需要管理员权限'}), 403
+    return True, user, None
 
 
 # ==================== 用户管理 ====================
@@ -26,8 +27,9 @@ def admin_required():
 @jwt_required()
 def list_users():
     """获取用户列表（管理员）"""
-    if not admin_required():
-        return jsonify({'error': '需要管理员权限'}), 403
+    is_admin, result, error = check_admin()
+    if not is_admin:
+        return error
     
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
@@ -41,7 +43,6 @@ def list_users():
     query = query.order_by(User.created_at.desc())
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     
-    # 获取每个用户的文件统计
     users_data = []
     for user in pagination.items:
         file_count = File.query.filter_by(uploaded_by=user.id).count()
@@ -65,14 +66,15 @@ def list_users():
 @jwt_required()
 def create_user():
     """创建用户（管理员）"""
-    if not admin_required():
-        return jsonify({'error': '需要管理员权限'}), 403
+    is_admin, admin_user, error = check_admin()
+    if not is_admin:
+        return error
     
     data = request.get_json()
     
     username = data.get('username', '').strip()
     password = data.get('password')
-    is_admin = data.get('is_admin', False)
+    is_admin_flag = data.get('is_admin', False)
     
     if not username or not password:
         return jsonify({'error': '用户名和密码不能为空'}), 400
@@ -83,14 +85,12 @@ def create_user():
     if len(password) < 6:
         return jsonify({'error': '密码长度不能小于6位'}), 400
     
-    # 检查用户名是否已存在
     if User.query.filter_by(username=username).first():
         return jsonify({'error': '用户名已存在'}), 409
     
-    # 创建用户
     user = User(
         username=username,
-        is_admin=is_admin,
+        is_admin=is_admin_flag,
         is_active=True
     )
     user.set_password(password)
@@ -98,16 +98,13 @@ def create_user():
     db.session.add(user)
     db.session.commit()
     
-    # 记录日志
-    current_user_id = get_jwt_identity()
-    admin_user = User.query.get(current_user_id)
     log = OperationLog(
-        user_id=current_user_id,
+        user_id=admin_user.id,
         username=admin_user.username,
         operation_type='create_user',
         target_type='user',
         target_id=user.id,
-        details=json.dumps({'username': username, 'is_admin': is_admin}),
+        details=json_module.dumps({'username': username, 'is_admin': is_admin_flag}),
         ip_address=request.remote_addr
     )
     db.session.add(log)
@@ -123,13 +120,13 @@ def create_user():
 @jwt_required()
 def update_user(user_id):
     """编辑用户（管理员）"""
-    if not admin_required():
-        return jsonify({'error': '需要管理员权限'}), 403
+    is_admin, admin_user, error = check_admin()
+    if not is_admin:
+        return error
     
     user = User.query.get_or_404(user_id)
     data = request.get_json()
     
-    # 可更新的字段
     if 'is_active' in data:
         user.is_active = bool(data['is_active'])
     
@@ -149,16 +146,13 @@ def update_user(user_id):
     
     db.session.commit()
     
-    # 记录日志
-    current_user_id = get_jwt_identity()
-    admin_user = User.query.get(current_user_id)
     log = OperationLog(
-        user_id=current_user_id,
+        user_id=admin_user.id,
         username=admin_user.username,
         operation_type='update_user',
         target_type='user',
         target_id=user_id,
-        details=json.dumps(data),
+        details=json_module.dumps(data),
         ip_address=request.remote_addr
     )
     db.session.add(log)
@@ -174,8 +168,9 @@ def update_user(user_id):
 @jwt_required()
 def reset_password(user_id):
     """重置用户密码（管理员）"""
-    if not admin_required():
-        return jsonify({'error': '需要管理员权限'}), 403
+    is_admin, admin_user, error = check_admin()
+    if not is_admin:
+        return error
     
     user = User.query.get_or_404(user_id)
     data = request.get_json()
@@ -188,16 +183,13 @@ def reset_password(user_id):
     user.set_password(new_password)
     db.session.commit()
     
-    # 记录日志
-    current_user_id = get_jwt_identity()
-    admin_user = User.query.get(current_user_id)
     log = OperationLog(
-        user_id=current_user_id,
+        user_id=admin_user.id,
         username=admin_user.username,
         operation_type='reset_password',
         target_type='user',
         target_id=user_id,
-        details=json.dumps({'target_username': user.username}),
+        details=json_module.dumps({'target_username': user.username}),
         ip_address=request.remote_addr
     )
     db.session.add(log)
@@ -210,17 +202,15 @@ def reset_password(user_id):
 @jwt_required()
 def delete_user(user_id):
     """删除用户（管理员）"""
-    if not admin_required():
-        return jsonify({'error': '需要管理员权限'}), 403
+    is_admin, admin_user, error = check_admin()
+    if not is_admin:
+        return error
     
     user = User.query.get_or_404(user_id)
     
-    # 不允许删除自己
-    current_user_id = get_jwt_identity()
-    if user_id == current_user_id:
+    if user_id == admin_user.id:
         return jsonify({'error': '不能删除自己的账户'}), 400
     
-    # 检查是否有上传的文件
     file_count = File.query.filter_by(uploaded_by=user_id).count()
     if file_count > 0:
         return jsonify({'error': f'该用户还有 {file_count} 个文件，请先处理文件'}), 400
@@ -229,15 +219,13 @@ def delete_user(user_id):
     db.session.delete(user)
     db.session.commit()
     
-    # 记录日志
-    admin_user = User.query.get(current_user_id)
     log = OperationLog(
-        user_id=current_user_id,
+        user_id=admin_user.id,
         username=admin_user.username,
         operation_type='delete_user',
         target_type='user',
         target_id=user_id,
-        details=json.dumps({'username': username}),
+        details=json_module.dumps({'username': username}),
         ip_address=request.remote_addr
     )
     db.session.add(log)
@@ -252,8 +240,9 @@ def delete_user(user_id):
 @jwt_required()
 def list_all_files():
     """获取所有文件列表（管理员）"""
-    if not admin_required():
-        return jsonify({'error': '需要管理员权限'}), 403
+    is_admin, admin_user, error = check_admin()
+    if not is_admin:
+        return error
     
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
@@ -278,11 +267,8 @@ def list_all_files():
     files_data = []
     for file_item in pagination.items:
         file_dict = file_item.to_dict(include_code=True)
-        
-        # 获取上传者名称
-        uploader = User.query.get(file_item.uploaded_by)
+        uploader = db.session.get(User, file_item.uploaded_by)
         file_dict['uploader_name'] = uploader.username if uploader else '未知'
-        
         files_data.append(file_dict)
     
     return jsonify({
@@ -297,13 +283,14 @@ def list_all_files():
 @jwt_required()
 def admin_delete_file(file_id):
     """强制删除文件（管理员）"""
-    if not admin_required():
-        return jsonify({'error': '需要管理员权限'}), 403
+    is_admin, admin_user, error = check_admin()
+    if not is_admin:
+        return error
     
     file_record = File.query.get_or_404(file_id)
     
     # 删除物理文件
-    if os.path.exists(file_record.storage_path):
+    if file_record.storage_path and os.path.exists(file_record.storage_path):
         try:
             os.remove(file_record.storage_path)
         except Exception as e:
@@ -313,16 +300,13 @@ def admin_delete_file(file_id):
     db.session.delete(file_record)
     db.session.commit()
     
-    # 记录日志
-    current_user_id = get_jwt_identity()
-    admin_user = User.query.get(current_user_id)
     log = OperationLog(
-        user_id=current_user_id,
+        user_id=admin_user.id,
         username=admin_user.username,
         operation_type='admin_delete_file',
         target_type='file',
         target_id=file_id,
-        details=json.dumps({'filename': filename}),
+        details=json_module.dumps({'filename': filename}),
         ip_address=request.remote_addr
     )
     db.session.add(log)
@@ -337,8 +321,9 @@ def admin_delete_file(file_id):
 @jwt_required()
 def get_login_logs():
     """获取登录日志（管理员）"""
-    if not admin_required():
-        return jsonify({'error': '需要管理员权限'}), 403
+    is_admin, admin_user, error = check_admin()
+    if not is_admin:
+        return error
     
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
@@ -386,8 +371,9 @@ def get_login_logs():
 @jwt_required()
 def get_operation_logs():
     """获取操作日志（管理员）"""
-    if not admin_required():
-        return jsonify({'error': '需要管理员权限'}), 403
+    is_admin, admin_user, error = check_admin()
+    if not is_admin:
+        return error
     
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
@@ -437,27 +423,23 @@ def get_operation_logs():
 @jwt_required()
 def get_system_stats():
     """获取系统统计信息（管理员）"""
-    import json as json_module
-    
-    if not admin_required():
-        return jsonify({'error': '需要管理员权限'}), 403
+    is_admin, admin_user, error = check_admin()
+    if not is_admin:
+        return error
     
     today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     
     stats = {
-        # 用户统计
         'total_users': User.query.count(),
         'active_users': User.query.filter_by(is_active=True).count(),
         'admin_users': User.query.filter_by(is_admin=True).count(),
         
-        # 文件统计
         'total_files': File.query.count(),
         'active_files': File.query.filter_by(status='active').count(),
         'expired_files': File.query.filter_by(status='expired').count(),
         'deleted_files': File.query.filter_by(status='deleted').count(),
         'total_storage_used': db.session.query(db.func.sum(File.file_size)).filter(File.status.in_(['active', 'expired'])).scalar() or 0,
         
-        # 今日统计
         'today_uploads': File.query.filter(File.uploaded_at >= today).count(),
         'today_downloads': OperationLog.query.filter(
             OperationLog.operation_type == 'download',
@@ -472,11 +454,9 @@ def get_system_stats():
             LoginLog.login_time >= today
         ).count(),
         
-        # 存储使用情况（按目录计算）
         'storage_info': _get_storage_info()
     }
     
-    # 格式化存储大小
     stats['total_storage_used_display'] = _format_size(stats['total_storage_used'])
     
     return jsonify(stats), 200
@@ -486,12 +466,12 @@ def get_system_stats():
 @jwt_required()
 def cleanup_expired_files():
     """手动清理过期文件（管理员）"""
-    if not admin_required():
-        return jsonify({'error': '需要管理员权限'}), 403
+    is_admin, admin_user, error = check_admin()
+    if not is_admin:
+        return error
     
     now = datetime.utcnow()
     
-    # 找出所有过期但状态还是active的文件
     expired_files = File.query.filter(
         File.status == 'active',
         File.expires_at != None,
@@ -502,8 +482,7 @@ def cleanup_expired_files():
     freed_space = 0
     
     for file_record in expired_files:
-        # 删除物理文件
-        if os.path.exists(file_record.storage_path):
+        if file_record.storage_path and os.path.exists(file_record.storage_path):
             try:
                 size = os.path.getsize(file_record.storage_path)
                 os.remove(file_record.storage_path)
@@ -511,21 +490,17 @@ def cleanup_expired_files():
             except Exception as e:
                 print(f"删除物理文件失败: {e}")
         
-        # 更新状态
         file_record.status = 'expired'
         cleaned_count += 1
     
     db.session.commit()
     
-    # 记录日志
-    current_user_id = get_jwt_identity()
-    admin_user = User.query.get(current_user_id)
     log = OperationLog(
-        user_id=current_user_id,
+        user_id=admin_user.id,
         username=admin_user.username,
         operation_type='manual_cleanup',
         target_type='system',
-        details=json.dumps({
+        details=json_module.dumps({
             'cleaned_count': cleaned_count,
             'freed_space': freed_space
         }),
@@ -563,12 +538,15 @@ def _get_storage_info():
     }
     
     if info['exists']:
-        total = sum(
-            os.path.getsize(os.path.join(dirpath, filename))
-            for dirpath, dirnames, filenames in os.walk(upload_folder)
-            for filename in filenames
-        )
-        info['used_bytes'] = total
-        info['used_display'] = _format_size(total)
+        try:
+            total = sum(
+                os.path.getsize(os.path.join(dirpath, filename))
+                for dirpath, dirnames, filenames in os.walk(upload_folder)
+                for filename in filenames
+            )
+            info['used_bytes'] = total
+            info['used_display'] = _format_size(total)
+        except Exception as e:
+            info['error'] = str(e)
     
     return info
