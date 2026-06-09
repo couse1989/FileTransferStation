@@ -96,8 +96,9 @@ def login():
         db.session.commit()
         
         # 为了安全，不明确提示用户不存在
-        # 检查是否需要验证码（基于IP）
-        if is_account_locked(ip_address):
+        # 检查是否需要验证码（基于IP失败次数）
+        locked = is_account_locked(ip_address)
+        if locked and locked is not False:
             return jsonify({'error': '需要验证码', 'require_captcha': True}), 403
         
         return jsonify({'error': '用户名或密码错误'}), 401
@@ -116,8 +117,9 @@ def login():
         db.session.commit()
         return jsonify({'error': '账户已被禁用，请联系管理员'}), 403
     
-    # 检查IP是否被临时锁定
-    if is_account_locked(ip_address):
+    # 检查IP是否被临时锁定（失败次数>=5）
+    locked = is_account_locked(ip_address)
+    if locked and locked is not False:
         # 验证验证码
         captcha = data.get('captcha')
         captcha_key = data.get('captcha_key', '')
@@ -164,8 +166,8 @@ def login():
         # 登录失败
         record_failed_attempt(ip_address, username)
         
-        fail_count = is_account_locked(ip_address)
-        need_captcha = fail_count >= 3
+        locked = is_account_locked(ip_address)
+        need_captcha = locked and locked is not False
         
         log = LoginLog(
             user_id=user.id,
@@ -178,10 +180,12 @@ def login():
         db.session.add(log)
         db.session.commit()
         
+        remaining = get_remaining_attempts(ip_address)
+        
         response_data = {
             'error': '用户名或密码错误',
             'require_captcha': need_captcha,
-            'remaining_attempts': max(0, 5 - (fail_count if fail_count else 1))
+            'remaining_attempts': remaining
         }
         
         if need_captcha:

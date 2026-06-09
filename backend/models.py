@@ -141,11 +141,11 @@ class LoginLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
     username = db.Column(db.String(80), nullable=False)
-    ip_address = db.Column(db.String(45), nullable=False)
+    ip_address = db.Column(db.String(45), nullable=False, index=True)
     user_agent = db.Column(db.String(500))
-    success = db.Column(db.Boolean, default=False)
+    success = db.Column(db.Boolean, default=False, index=True)
     fail_reason = db.Column(db.String(100))  # 失败原因: invalid_password, account_locked, etc.
-    login_time = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     
     def to_dict(self):
         return {
