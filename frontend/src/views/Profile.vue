@@ -126,8 +126,9 @@ const passwordRules = {
 async function handleChangePassword() {
   if (!passwordFormRef.value) return
   
-  await passwordFormRef.validate(async (valid) => {
-    if (!valid) return
+  try {
+    // Element Plus 2.x 使用 Promise 形式的 validate
+    await passwordFormRef.value.validate()
     
     changingPassword.value = true
     
@@ -155,7 +156,9 @@ async function handleChangePassword() {
     } finally {
       changingPassword.value = false
     }
-  })
+  } catch (error) {
+    // 表单验证失败，不处理
+  }
 }
 
 // 格式化日期时间

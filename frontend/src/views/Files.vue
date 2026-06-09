@@ -445,12 +445,41 @@ function handleCommand(command, file) {
 }
 
 function copyLink(file) {
-  const url = `${window.location.origin}/download/${file.id}`
-  navigator.clipboard.writeText(url).then(() => {
-    ElMessage.success('链接已复制到剪贴板')
-  }).catch(() => {
-    ElMessage.error('复制失败')
-  })
+  const url = `${window.location.origin}/api/files/download/${file.id}`
+  copyToClipboard(url, '链接已复制到剪贴板')
+}
+
+function copyCode(file) {
+  copyToClipboard(file.extract_code, `提取码 ${file.extract_code} 已复制`)
+}
+
+// 通用复制函数（兼容HTTP环境）
+function copyToClipboard(text, successMsg) {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(() => {
+      ElMessage.success(successMsg)
+    }).catch(() => {
+      fallbackCopy(text, successMsg)
+    })
+  } else {
+    fallbackCopy(text, successMsg)
+  }
+}
+
+function fallbackCopy(text, successMsg) {
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  try {
+    document.execCommand('copy')
+    ElMessage.success(successMsg)
+  } catch (e) {
+    ElMessage.error('复制失败，请手动复制: ' + text)
+  }
+  document.body.removeChild(textarea)
 }
 
 function copyCode(file) {

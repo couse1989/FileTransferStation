@@ -22,15 +22,6 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: false,
-    rollupOptions: {
-      output: {
-        // 手动拆分chunk，控制加载顺序
-        manualChunks: {
-          'vendor-vue': ['vue', 'vue-router', 'pinia'],
-          'vendor-ui': ['element-plus', '@element-plus/icons-vue'],
-          'vendor-utils': ['axios', 'nprogress']
-        }
-      }
-    }
+    chunkSizeWarningLimit: 1000
   }
 })

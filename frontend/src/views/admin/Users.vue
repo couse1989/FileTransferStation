@@ -269,8 +269,9 @@ async function toggleUserStatus(user, value) {
 async function handleSubmit() {
   if (!formRef.value) return
   
-  await formRef.validate(async (valid) => {
-    if (!valid) return
+  try {
+    // Element Plus 2.x 使用 Promise 形式的 validate
+    await formRef.value.validate()
     
     submitting.value = true
     
@@ -303,7 +304,9 @@ async function handleSubmit() {
     } finally {
       submitting.value = false
     }
-  })
+  } catch (error) {
+    // 表单验证失败，不处理
+  }
 }
 
 // 显示重置密码对话框
