@@ -156,7 +156,7 @@ class LoginLog(db.Model):
             'user_agent': self.user_agent[:100] if self.user_agent else None,
             'success': self.success,
             'fail_reason': self.fail_reason,
-            'login_time': self.login_time.isoformat() if self.login_time else None
+            'login_time': self.timestamp.isoformat() if self.timestamp else None
         }
 
 

@@ -343,18 +343,18 @@ def get_login_logs():
     if start_date:
         try:
             start = datetime.strptime(start_date, '%Y-%m-%d')
-            query = query.filter(LoginLog.login_time >= start)
+            query = query.filter(LoginLog.timestamp >= start)
         except ValueError:
             pass
     
     if end_date:
         try:
             end = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)
-            query = query.filter(LoginLog.login_time < end)
+            query = query.filter(LoginLog.timestamp < end)
         except ValueError:
             pass
     
-    query = query.order_by(LoginLog.login_time.desc())
+    query = query.order_by(LoginLog.timestamp.desc())
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     
     logs_data = [log.to_dict() for log in pagination.items]
@@ -447,11 +447,11 @@ def get_system_stats():
         ).count(),
         'today_logins': LoginLog.query.filter(
             LoginLog.success == True,
-            LoginLog.login_time >= today
+            LoginLog.timestamp >= today
         ).count(),
         'today_failed_logins': LoginLog.query.filter(
             LoginLog.success == False,
-            LoginLog.login_time >= today
+            LoginLog.timestamp >= today
         ).count(),
         
         'storage_info': _get_storage_info()

@@ -65,22 +65,22 @@
           </template>
           
           <div class="quick-actions">
-            <el-button type="primary" @click="$router.push('/upload')">
+            <el-button type="primary" @click="$router.push('/upload')" class="quick-btn">
               <el-icon><Upload /></el-icon>
               上传文件
             </el-button>
             
-            <el-button type="success" @click="$router.push('/files')">
+            <el-button type="success" @click="$router.push('/files')" class="quick-btn">
               <el-icon><Document /></el-icon>
               管理文件
             </el-button>
             
-            <el-button type="warning" @click="$router.push('/download-code')">
+            <el-button type="warning" @click="$router.push('/download-code')" class="quick-btn">
               <el-icon><Key /></el-icon>
               提取码下载
             </el-button>
             
-            <el-button type="info" @click="$router.push('/profile')">
+            <el-button type="info" @click="$router.push('/profile')" class="quick-btn">
               <el-icon><UserFilled /></el-icon>
               个人中心
             </el-button>
@@ -196,6 +196,11 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+.quick-btn {
+  width: 100%;
+  justify-content: center;
 }
 
 @media (max-width: 480px) {
